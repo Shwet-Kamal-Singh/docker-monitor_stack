@@ -1,0 +1,42 @@
+modules:
+  http_2xx:
+    prober: http  # Use the HTTP prober
+    http:
+      preferred_ip_protocol: "ip4"  # Prefer IPv4 for probing
+
+  http_post_2xx:
+    prober: http  # Use the HTTP prober
+    http:
+      method: POST  # Use POST method for HTTP requests
+
+  tcp_connect:
+    prober: tcp  # Use the TCP prober
+
+  pop3s_banner:
+    prober: tcp  # Use the TCP prober
+    tcp:
+      query_response:
+      - expect: "^+OK"  # Expect a response starting with "+OK"
+      tls: true  # Use TLS for the connection
+      tls_config:
+        insecure_skip_verify: false  # Do not skip TLS verification
+
+  ssh_banner:
+    prober: tcp  # Use the TCP prober
+    tcp:
+      query_response:
+      - expect: "^SSH-2.0-"  # Expect a response starting with "SSH-2.0-"
+      - send: "SSH-2.0-blackbox-ssh-check"  # Send this string to the server
+
+  irc_banner:
+    prober: tcp  # Use the TCP prober
+    tcp:
+      query_response:
+      - send: "NICK prober"  # Send NICK command
+      - send: "USER prober prober prober :prober"  # Send USER command
+      - expect: "PING :([^ ]+)"  # Expect a PING response
+        send: "PONG ${1}"  # Send a PONG response
+      - expect: "^:[^ ]+ 001"  # Expect a response starting with "001"
+
+  icmp:
+    prober: icmp  # Use the ICMP prober
