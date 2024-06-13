@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  alertmanager:
+    image: prom/alertmanager:v0.23.0  # Alertmanager image
+    container_name: alertmanager  # Container name
+    restart: always  # Always restart the container if it stops
+    volumes:
+      - ./alertmanager/config/alertmanager.yml:/etc/alertmanager/alertmanager.yml  # Mount the Alertmanager config file
+      - ./logs/alertmanager:/var/log/alertmanager  # Mount the log directory for Alertmanager
+    ports:
+      - "9093:9093"  # Expose port 9093
+    networks:
+      - monitoring_network  # Connect to the monitoring network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:9093/api/v1/status"]  # Health check command
+      interval: 30s  # Interval between health checks
+      timeout: 10s  # Timeout for the health check
+      retries: 3  # Number of retries before marking the container as unhealthy
+    depends_on:
+      - prometheus  # Start Alertmanager after Prometheus
+
+  blackbox_exporter:
+    image: prom/blackbox-exporter:v0.18.0  # Blackbox Exporter image
+    container_name: blackbox_exporter  # Container name
+    restart: always  # Always restart the container if it stops
+    volumes:
+      - ./blackbox_exporter/config/blackbox.yml:/etc/blackbox_exporter/config.yml  # Mount the Blackbox Exporter config file
+      - ./logs/blackbox_exporter:/var/log/blackbox_exporter  # Mount the log directory for Blackbox Exporter
+    ports:
+      - "9115:9115"  # Expose port 9115
+    networks:
+      - monitoring_network  # Connect to the monitoring network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:9115/-/healthy"]  # Health check command
+      interval: 30s  # Interval between health checks
+      timeout: 10s  # Timeout for the health check
+      retries: 3  # Number of retries before marking the container as unhealthy
+
+  grafana:
+    image: grafana/grafana-enterprise:10.0.2  # Grafana image
+    container_name: grafana  # Container name
+    volumes:
+      - ./grafana/config/grafana.ini:/etc/grafana/grafana.ini  # Mount the Grafana config file
+      - ./grafana/config/datasources:/etc/grafana/provisioning/datasources  # Mount the datasources config directory
+      - ./grafana/config/dashboards:/etc/grafana/provisioning/dashboards  # Mount the dashboards config directory
+      - ./data/grafana:/var/lib/grafana  # Mount the Grafana data directory
+      - ./logs/grafana:/var/log/grafana  # Mount the log directory for Grafana
+    ports:
+      - "3000:3000"  # Expose port 3000
+    restart: always  # Always restart the container if it stops
+    networks:
+      - monitoring_network  # Connect to the monitoring network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000/api/health"]  # Health check command
+      interval: 30s  # Interval between health checks
+      timeout: 10s  # Timeout for the health check
+      retries: 3  # Number of retries before marking the container as unhealthy
+    depends_on:
+      - prometheus  # Start Grafana after Prometheus
+
+  prometheus:
+    image: prom/prometheus:v2.37.8  # Prometheus image
+    container_name: prometheus  # Container name
+    restart: always  # Always restart the container if it stops
+    volumes:
+      - ./prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml  # Mount the Prometheus config file
+      - ./prometheus/config/alert.rules.yml:/etc/prometheus/alert.rules.yml  # Mount the Prometheus alert rules file
+      - ./data/prometheus:/prometheus  # Mount the Prometheus data directory
+      - ./logs/prometheus:/var/log/prometheus  # Mount the log directory for Prometheus
+    ports:
+      - "9090:9090"  # Expose port 9090
+    networks:
+      - monitoring_network  # Connect to the monitoring network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:9090/-/healthy"]  # Health check command
+      interval: 30s  # Interval between health checks
+      timeout: 10s  # Timeout for the health check
+      retries: 3  # Number of retries before marking the container as unhealthy
+    depends_on:
+      - node_exporter  # Start Prometheus after Node Exporter
+      - blackbox_exporter  # Start Prometheus after Blackbox Exporter
+
+  node_exporter:
+    image: prom/node-exporter:v1.3.0  # Node Exporter image
+    container_name: node_exporter  # Container name
+    volumes:
+      - ./logs/node_exporter:/var/log/node_exporter  # Mount the log directory for Node Exporter
+      - /proc:/host/proc:ro  # Mount the /proc directory
+      - /sys:/host/sys:ro  # Mount the /sys directory
+      - /:/rootfs:ro  # Mount the root filesystem
+    ports:
+      - "9100:9100"  # Expose port 9100
+    restart: always  # Always restart the container if it stops
+    networks:
+      - monitoring_network  # Connect to the monitoring network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:9100/-/healthy"]  # Health check command
+      interval: 30s  # Interval between health checks
+      timeout: 10s  # Timeout for the health check
+      retries: 3  # Number of retries before marking the container as unhealthy
+
+networks:
+  monitoring_network:
+    driver: bridge  # Use the bridge network driver for container networking
