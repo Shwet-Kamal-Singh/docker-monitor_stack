@@ -1,1 +1,67 @@
-# Alert rules
+# Define alert groups
+groups:
+  # Server monitoring alert group
+  - name: ServerMonitoring
+    rules:
+      # Alert rule for detecting if a server is down
+      - alert: ServerDown
+        expr: up == 0  # Expression to detect if any instance is down
+        for: 5m  # Trigger the alert if the condition holds true for 5 minutes
+        labels:
+          severity: critical  # Severity level of the alert
+        annotations:
+          summary: "Server is down"  # Brief summary of the alert
+          description: "Instance {{ $labels.instance }} is not reachable for the last 5 minutes"  # Detailed description
+
+      # Alert rule for detecting high CPU usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance)(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80  # Expression to calculate CPU usage
+        for: 5m  # Trigger the alert if the condition holds true for 5 minutes
+        labels:
+          severity: critical  # Severity level of the alert
+        annotations:
+          summary: "High CPU usage detected"  # Brief summary of the alert
+          description: "CPU usage is above 80% for 5 minutes on server {{ $labels.instance }}"  # Detailed description
+
+      # Alert rule for detecting high RAM usage
+      - alert: HighRAMUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemFree_bytes) / node_memory_MemTotal_bytes * 100 > 80  # Expression to calculate RAM usage
+        for: 5m  # Trigger the alert if the condition holds true for 5 minutes
+        labels:
+          severity: warning  # Severity level of the alert
+        annotations:
+          summary: "High RAM usage detected"  # Brief summary of the alert
+          description: "RAM usage is above 80% for 5 minutes on server {{ $labels.instance }}"  # Detailed description
+
+      # Alert rule for detecting low disk space
+      - alert: LowDiskSpace
+        expr: (node_filesystem_free_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10  # Expression to calculate disk space usage
+        for: 5m  # Trigger the alert if the condition holds true for 5 minutes
+        labels:
+          severity: critical  # Severity level of the alert
+        annotations:
+          summary: "Low disk space detected"  # Brief summary of the alert
+          description: "Disk space is below 10% on instance {{ $labels.instance }} for the last 5 minutes"  # Detailed description
+
+  # Website monitoring alert group
+  - name: WebsiteMonitoring
+    rules:
+      # Alert rule for detecting if a website is down
+      - alert: WebsiteDown
+        expr: probe_success == 0  # Expression to detect if any website is down
+        for: 5m  # Trigger the alert if the condition holds true for 5 minutes
+        labels:
+          severity: critical  # Severity level of the alert
+        annotations:
+          summary: "Website is down"  # Brief summary of the alert
+          description: "Website {{ $labels.instance }} is not reachable for the last 5 minutes"  # Detailed description
+
+      # Alert rule for detecting SSL certificate expiration within 30 days
+      - alert: SslCertificateExpiration60Days
+        expr: probe_ssl_earliest_cert_expiry - time() < 30 * 24 * 3600  # Expression to calculate SSL certificate expiration
+        for: 5m  # Trigger the alert if the condition holds true for 5 minutes
+        labels:
+          severity: warning  # Severity level of the alert
+        annotations:
+          summary: "SSL certificate expiration warning (30 days)"  # Brief summary of the alert
+          description: "SSL certificate for website {{ $labels.instance }} will expire within the next 30 days"  # Detailed description

@@ -1,1 +1,53 @@
-# Prometheus configuration
+# Global configurations for Prometheus
+global:
+  scrape_interval: 15s  # How frequently to scrape targets
+  evaluation_interval: 15s  # How frequently to evaluate rules
+  external_labels:
+    monitor: 'dev_monitor'  # External labels to add to all metrics
+
+# Configuration for alerting
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"  # Alertmanager service address in Docker Compose
+
+# Define rule files
+rule_files:
+  - "/etc/prometheus/alert.rules.yml"  # Path to alert rules file
+
+# Scrape configurations for different jobs
+scrape_configs:
+  # Configuration for monitoring node exporters on remote servers
+  - job_name: 'remote-node-exporter'
+    static_configs:
+      - targets:
+          # Add your node exporter target IP addresses here
+          - '<REMOTE_IP_1>:9100'  # Example: '192.227.84.179:9100'
+          - '<REMOTE_IP_2>:9100'  # Example: '192.227.106.43:9100'
+          - '<REMOTE_IP_3>:9100'  # Example: '192.168.0.180:9100'
+          - '<REMOTE_IP_4>:9100'  # Example: '104.167.3.205:9100'
+          - '<REMOTE_IP_5>:9100'  # Example: '147.182.166.106:9100'
+          - '<REMOTE_IP_6>:9100'  # Example: '147.182.208.150:9100'
+
+  # Configuration for monitoring websites using blackbox exporter
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]  # Expect an HTTP 200 response
+    static_configs:
+      - targets:
+          # Add the websites you want to monitor here
+          - 'https://www.example1.com'  # Example: 'https://www.google.com'
+          - 'https://www.example2.com'  # Example: 'https://www.facebook.ai'
+          - 'https://www.example3.com'  # Example: 'https://www.flipkart.com'
+          - 'http://example4.com'       # Example: 'http://91.754.143.35' (add HTTP sites for monitoring)
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: "blackbox_exporter:9115"  # Blackbox exporter service address in Docker Compose
+      - target_label: region
+        replacement: "local"  # Set the region label to 'local'
